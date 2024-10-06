@@ -13,13 +13,14 @@ async function processCSV(filePath) {
 
     for await (const line of rl) {
         // Divide la línea por comas y asigna los campos
-        const [latitude, longitude, value] = line.split(',');
+        const [latitude, longitude, value, country] = line.split(',');
 
         // Estructura los datos en un objeto legible
         const dataObject = {
             value: parseFloat(value),
             longitude: parseFloat(longitude),
             latitude: parseFloat(latitude),
+            country: country
         };
 
         results.push(dataObject);

@@ -9,7 +9,7 @@ import { Worker } from 'worker_threads';
 export class AppService {
   private csvDirectoryPath = 'data/APOLLO 18/Metano/csv';
   private csvDirectoryPath2 = 'data';
-  private csvDirectoryPath3 = 'data/DataPerYear';
+  private csvDirectoryPath3 = 'data/dataYearLimpia';
   private readdir = util.promisify(fs.readdir);
 
   async GetData(category: string, clase?: string): Promise<any[]> {
@@ -71,7 +71,7 @@ export class AppService {
   }
 
 
-  async GetData2(csvFile: string = 'output.csv'): Promise<any[]> {
+  async GetData2(csvFile: string = '2019_country_limpio.csv'): Promise<any[]> {
     const results: any[] = [];
 
     // Marcar tiempo de inicio

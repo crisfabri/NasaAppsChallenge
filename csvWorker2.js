@@ -13,7 +13,7 @@ async function processCSV(filePath) {
 
     for await (const line of rl) {
         // Divide la línea por comas y asigna los campos
-        const [concentration, longitude, latitude] = line.split(',');
+        const [latitude,longitude,concentration] = line.split(',');
 
         // Estructura los datos en un objeto legible
         const dataObject = {
