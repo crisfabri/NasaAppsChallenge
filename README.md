@@ -57,6 +57,8 @@ El mapa interactivo permite la selección de años para las emisiones de CO₂ e
 
 A continuación se muestran algunas imágenes de la visualización de los datos:
 
+![Video](imgs/video2.mov)
+
 ![Demo 1](imgs/img1.jpeg)
 ![Demo 2](imgs/img2.jpeg)
 ![Demo 3](imgs/img3.jpeg)
