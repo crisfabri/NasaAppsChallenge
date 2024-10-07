@@ -1,73 +1,75 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Proyecto de Visualización de Emisiones de Metano y CO₂
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Este proyecto permite visualizar datos relacionados con las emisiones de metano y CO₂ en un mapa interactivo utilizando **Mapbox** y **Chart.js**. Se proporciona una interfaz gráfica para explorar las emisiones de diferentes países y obtener información detallada.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Contenido
 
-## Description
+- **Mapa Interactivo**: El archivo `mapa.html` permite visualizar las emisiones de metano y CO₂, alternando entre ambos mapas.
+- **Datos**: Los datos necesarios para el funcionamiento del proyecto se encuentran en Google Drive. [Accede a la carpeta de datos aquí](https://drive.google.com/file/d/1CknBLDKD2iCemTR90x8aQQfHr4SJLGuJ/view?usp=sharing).
+- **API**: El proyecto incluye una API para la obtención de datos sobre emisiones. Asegúrate de tener el servidor corriendo para que las llamadas a la API funcionen correctamente.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Instrucciones de Uso
 
-## Installation
+1. **Descargar los Datos**:
+   - Descomprime los datos de la carpeta de Google Drive en el directorio del proyecto.
+   - Asegúrate de que los archivos de datos estén en la ruta correcta.
 
-```bash
-$ npm install
-```
+2. **Configuración del Servidor**:
+   - Asegúrate de que el servidor de la API esté corriendo en `http://localhost:3000`.
+   - Puedes usar herramientas como `ngrok` para exponer tu servidor local a internet si es necesario.
 
-## Running the app
+3. **Ajustar Rutas (si es necesario)**:
+   - Si cambias la estructura de carpetas o los nombres de los archivos, ajusta las rutas en el código JavaScript dentro de `mapa.html`.
 
-```bash
-# development
-$ npm run start
+4. **Abrir el Mapa**:
+   - Abre el archivo `mapa.html` en un navegador para visualizar el mapa interactivo.
+   - Usa el botón "CO₂" para alternar entre los mapas de emisiones de metano y CO₂.
 
-# watch mode
-$ npm run start:dev
+## Categorías y Clases de Metano
 
-# production mode
-$ npm run start:prod
-```
+Las emisiones de metano se pueden clasificar en las siguientes **categorías** y **clases**:
 
-## Test
+### Categorías
+- **Prior**: Datos de emisiones previos a las políticas o acciones específicas implementadas.
+- **Post**: Datos de emisiones después de la implementación de políticas o acciones específicas.
 
-```bash
-# unit tests
-$ npm run test
+### Clases
+- **Coal**: Emisiones provenientes de la extracción y uso del carbón.
+- **Fire**: Emisiones generadas por la quema de biomasa.
+- **Gas**: Emisiones relacionadas con la producción y uso del gas natural.
+- **Geo**: Emisiones de fuentes geotérmicas.
+- **Livestock**: Emisiones generadas por la cría de ganado y otros animales.
+- **Oil**: Emisiones derivadas de la extracción y uso del petróleo.
+- **Rice**: Emisiones asociadas al cultivo de arroz.
 
-# e2e tests
-$ npm run test:e2e
+## Rango de Años para CO₂
 
-# test coverage
-$ npm run test:cov
-```
+El mapa interactivo permite la selección de años para las emisiones de CO₂ en el rango de **2015 a 2022**. Puedes ajustar el año utilizando un control deslizante, lo que permite visualizar las emisiones para un año específico dentro de este rango.
 
-## Support
+## Funcionamiento
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- El mapa de **metano** se muestra por defecto al abrir el archivo.
+- Al hacer clic en un país, se muestra un popup con información sobre las emisiones de CO₂ y metano para ese país.
+- Se pueden seleccionar diferentes categorías y clases de emisiones mediante un menú desplegable.
+- Los gráficos de emisiones para el país seleccionado se muestran en el popup utilizando **Chart.js**.
 
-## Stay in touch
+## Demo
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+A continuación se muestran algunas imágenes de la visualización de los datos:
 
-## License
+![Demo 1](imgs/img1.jpeg)
+![Demo 2](imgs/img2.jpeg)
+![Demo 3](imgs/img3.jpeg)
 
-Nest is [MIT licensed](LICENSE).
+## Requerimientos
+
+- Navegador web moderno (se recomienda Google Chrome o Firefox).
+- **Mapbox Access Token**: Asegúrate de reemplazar el `mapboxgl.accessToken` en el código con tu propio token de acceso de Mapbox.
+
+## Contribuciones
+
+Si deseas contribuir al proyecto, por favor abre un issue o envía un pull request.
+
+## Licencia
+
+Este proyecto está bajo la Licencia MIT.

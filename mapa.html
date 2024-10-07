@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mapas de Emisiones de Metano y CO2</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin:0; padding:0; }
+        /* Ambos mapas se superponen, uno será visible a la vez */
+        #map-methane, #map-co2 {
+            position:absolute;
+            top:0;
+            bottom:0;
+            width:100%;
+            display: none; /* El mapa CO2 estará oculto inicialmente */
+        }
+        #map-methane {
+            display: block; /* Mostrar mapa de metano por defecto */
+        }
+        .switch-map-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1;
+            background: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        #switchMapBtn {
+            font-size:  40px;
+        }
+        .legend .color-bar {
+            width: 200px;
+            height: 20px;
+            background: linear-gradient(to right, rgba(33,102,172,0), rgb(103,169,207), rgb(209,229,240), rgb(253,219,199), rgb(239,138,98), rgb(178,24,43));
+            margin-bottom: 5px;
+        }
+        .legend .label {
+            display: flex;
+            justify-content: space-between;
+        }
+        /* Ocultar las opciones de categoría y clase inicialmente */
+        #options-container{
+            display: block;
+        }
+
+        #year-container {
+            display: none;
+        }
+        /* Mejoras para el popup de información del país */
+        #country-info-popup {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            width: 300px;
+            display: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease-in-out;
+            color: #333;
+        }
+
+        #country-info-popup h3 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #2c3e50;
+            font-weight: bold;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+
+        #country-info-popup p {
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 10px 0 0 0;
+            color: #7f8c8d;
+        }
+
+        #country-info-popup:after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: -10px;
+            border-width: 10px;
+            border-style: solid;
+            border-color: transparent rgba(255, 255, 255, 0.95) transparent transparent;
+        }
+
+        /* Botones principales y secundarios */
+        button, .switch-map-btn {
+            background-color: #6200ea; /* Color principal vibrante */
+            color: #ffffff; /* Texto blanco para contraste */
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Botones secundarios dentro de los contenedores */
+        #updateMapBtn, #updateMapCo2Btn {
+            background-color: #6200ea; /* Color secundario atractivo */
+            color: #000000; /* Texto negro para mejor legibilidad */
+        }
+
+        /* Efecto hover para todos los botones */
+        button:hover, .switch-map-btn:hover {
+            background-color: #3700b3; /* Color más oscuro al pasar el cursor */
+            transform: translateY(-2px); /* Sutil levantamiento */
+        }
+
+        /* Efecto activo al hacer clic */
+        button:active, .switch-map-btn:active {
+            background-color: #3700b3; /* Cambio de color al presionar */
+            transform: translateY(0); /* Resetear la posición */
+        }
+
+        /* Enfoque para accesibilidad */
+        button:focus, .switch-map-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(98, 0, 234, 0.5);
+        }
+
+        /* Contenedores de opciones y año */
+        #options-container{
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            display: block; /* Mantener oculto inicialmente */
+        }
+
+        #year-container {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            display: none; /* Mantener oculto inicialmente */
+        }
+
+        /* Mostrar el contenedor de opciones cuando es metano */
+        #options-container.active, #year-container.active {
+            display: block;
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Etiquetas dentro de los contenedores */
+        #options-container label, #year-container label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #333333;
+            font-weight: 500;
+        }
+
+        /* Selectores dentro de los contenedores */
+        #options-container select, #year-container input[type="range"] {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            border: 1px solid #cccccc;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        /* Cambio de borde al enfocar los selectores */
+        #options-container select:focus, #year-container input[type="range"]:focus {
+            border-color: #6200ea;
+            outline: none;
+        }
+
+        /* Botones dentro de los contenedores */
+        #options-container button, #year-container button {
+            width: 100%;
+            background-color: #6200ea;
+            color: #ffffff;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Efecto hover para los botones dentro de los contenedores */
+        #options-container button:hover, #year-container button:hover {
+            background-color: #3700b3;
+            transform: translateY(-2px);
+        }
+
+        /* Efecto activo al hacer clic en los botones dentro de los contenedores */
+        #options-container button:active, #year-container button:active {
+            background-color: #3700b3;
+            transform: translateY(0);
+        }
+
+        /* Enfoque para accesibilidad en botones dentro de los contenedores */
+        #options-container button:focus, #year-container button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(3, 218, 198, 0.5);
+        }
+
+
+        /* Popup de información del país */
+        #country-info-popup {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            z-index: 3;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 16px;
+            width: 320px;
+            display: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            color: #333333;
+        }
+
+        /* Efecto de aparición del popup */
+        #country-info-popup.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Encabezado del popup */
+        #country-info-popup h3 {
+            margin-top: 0;
+            font-size: 20px;
+            color: #6200ea;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+
+        /* Párrafos dentro del popup */
+        #country-info-popup p {
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 12px 0 0 0;
+            color: #555555;
+        }
+
+        /* Triángulo de la flecha del popup */
+        #country-info-popup:after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: -12px;
+            border-width: 12px;
+            border-style: solid;
+            border-color: transparent #ffffff transparent transparent;
+        }
+
+        /* Canvas dentro del popup */
+        #country-info-popup canvas {
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Leyenda mejorada */
+        .legend {
+            position: absolute;
+            bottom: 40px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .legend .color-bar {
+            width: 220px;
+            height: 24px;
+            background: linear-gradient(to right, rgba(33,102,172,0), rgb(103,169,207), rgb(209,229,240), rgb(253,219,199), rgb(239,138,98), rgb(178,24,43));
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .legend .label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #333333;
+        }
+
+
+        /* Ajustes para el contenedor de Año */
+        #year-container {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            transition: transform 0.5s ease, opacity 0.5s ease; /* Incrementar duración para una animación más suave */
+            display: none; /* Mantener oculto inicialmente */
+            max-width: 300px; /* Limitar el ancho máximo para evitar desbordamientos */
+        }
+
+        /* Estilo para el label de Año */
+        #year-container label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 16px;
+            color: #333333;
+            font-weight: 600;
+        }
+
+        /* Estilo mejorado para el texto "Año: 2017" */
+        #selected-year {
+            font-size: 18px;
+            color: #6200ea; /* Color vibrante para destacar */
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        /* Estilo para el input range */
+        #year-container input[type="range"] {
+            width: 90%;
+            -webkit-appearance: none; /* Remover estilos por defecto en WebKit */
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Estilo para el thumb del slider */
+        #year-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6200ea;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        #year-container input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6200ea;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Hover y Active para el slider thumb */
+        #year-container input[type="range"]:hover {
+            opacity: 1;
+        }
+
+        #year-container input[type="range"]::-webkit-slider-thumb:hover,
+        #year-container input[type="range"]::-moz-range-thumb:hover {
+            background: #3700b3;
+            transform: scale(1.2);
+        }
+
+        #year-container input[type="range"]::-webkit-slider-thumb:active,
+        #year-container input[type="range"]::-moz-range-thumb:active {
+            background: #03a9f4;
+            transform: scale(1);
+        }
+
+        
+
+
+    </style>
+</head>
+<body>
+
+<!-- Contenedores para ambos mapas -->
+<div id="map-methane"></div>
+<div id="map-co2"></div>
+
+<!-- Botón para alternar entre mapas -->
+<button class="switch-map-btn" id="switchMapBtn">CO2</button>
+
+<div id="country-info-popup">
+    <h3 id="country-name">Nombre del País</h3>
+    <p id="country-info">Información del país aparecerá aquí...</p>
+
+    <!-- Canvas para el gráfico de CO2 -->
+    <div style="max-width: 100%; height: 200px;">
+        <canvas id="co2Chart"></canvas>
+    </div>
+
+    <!-- Canvas para el gráfico de metano -->
+    <div style="max-width: 100%; height: 200px; margin-top: 20px;">
+        <canvas id="methaneChart"></canvas>
+    </div>
+</div>
+
+<!-- Selectores para categoría y clase -->
+<div id="options-container" style="position: absolute; top: 70%; right: 10px; z-index: 1;  background: rgba(255, 255, 255, 0.95); padding: 20px;">
+    <label for="category">Categoría:</label>
+    <select id="category">
+        <option value="prior">Prior</option>
+        <option value="post" selected>Post</option> <!-- Post por defecto -->
+    </select>
+
+    <label for="class">Clase (opcional):</label>
+    <select id="class">
+        <option value="">-- Selecciona una clase --</option>
+        <option value="coal">Coal</option>
+        <option value="fire">Fire</option>
+        <option value="gas">Gas</option>
+        <option value="geo">Geo</option>
+        <option value="livestock">Livestock</option>
+        <option value="oil">Oil</option>
+        <option value="rice">Rice</option>
+    </select>
+
+    <button id="updateMapBtn">Actualizar Mapa</button>
+</div>
+
+<div id="year-container" style="position: absolute; top: 70%; right: 10px; z-index: 1; background: rgba(255, 255, 255, 0.95); padding: 10px;">
+    <label for="year">Año: <span id="selected-year">2020</span></label>
+    <input type="range" id="year" min="2015" max="2022" value="2020" step="1" oninput="updateYearLabel(this.value)">
+    <button id="updateMapCo2Btn">Actualizar Mapa</button>
+</div>
+
+<!-- Librerías de Mapbox GL JS y Turf.js -->
+<script src='https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js'></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+    // Función para actualizar el valor mostrado del año según el slider
+    function updateYearLabel(value) {
+        document.getElementById('selected-year').textContent = value;
+    }
+    // Configurar Mapbox con tu token de acceso
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYWxleGpyMjAwMSIsImEiOiJjbHpjdjRsZTIwZzcwMmtvYTczbjZ2cmhzIn0.LJAI2IpbDNtzWDVF-UMqAQ';
+
+    // Inicializar mapa de metano
+    const mapMethane = new mapboxgl.Map({
+        container: 'map-methane',
+        style: 'mapbox://styles/mapbox/dark-v11',
+        center: [0, 0],
+        zoom: 2
+    });
+
+    // Inicializar mapa de CO2
+    const mapCO2 = new mapboxgl.Map({
+        container: 'map-co2',
+        style: 'mapbox://styles/mapbox/dark-v11',
+        center: [0, 0],
+        zoom: 2
+    });
+
+    let currentMap = 'methane';  // Mapa inicial es metano
+    const switchMapBtn = document.getElementById('switchMapBtn');
+    const optionsContainer = document.getElementById('options-container');
+    const yearContainer = document.getElementById('year-container');
+    
+    let methaneDataPoints = [];
+    let co2DataPoints = []; // Nuevo array para los datos de CO2
+
+    // Función para alternar entre los mapas y mostrar/ocultar las opciones
+    function toggleMaps() {
+        if (currentMap === 'methane') {
+            document.getElementById('map-methane').style.display = 'none';
+            document.getElementById('map-co2').style.display = 'block';
+            mapCO2.resize();  // Forzar a Mapbox a recalcular el tamaño
+            currentMap = 'co2';
+            switchMapBtn.textContent = 'Metano';
+            optionsContainer.style.display = 'none'; // Ocultar opciones para CO2
+            yearContainer.style.display = 'block'; // Mostrar opciones de año para CO2
+        } else {
+            document.getElementById('map-methane').style.display = 'block';
+            document.getElementById('map-co2').style.display = 'none';
+            mapMethane.resize();  // Forzar a Mapbox a recalcular el tamaño
+            currentMap = 'methane';
+            switchMapBtn.textContent = 'CO2';
+            optionsContainer.style.display = 'block'; // Mostrar opciones para Metano
+            yearContainer.style.display = 'none'; // Ocultar opciones de año para CO2
+        }
+    }
+
+    let filteredCountries = [];
+    // Función para agregar la capa de países
+    async function loadCountriesLayer(map) {
+        const response = await fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json');
+        const countriesGeoJSON = await response.json();
+    
+        // Filtrar los países que están en la lista de countryData
+        filteredCountries = countriesGeoJSON.features.filter(country => 
+            countryData.countries.some(c => c.country === country.properties.name)
+        );
+    
+        // Añadir capa de países con solo los países filtrados
+        map.addSource('countries', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: filteredCountries
+            }
+        });
+    
+        map.addLayer({
+            id: 'countries-fill',
+            type: 'fill',
+            source: 'countries',
+            layout: {},
+            paint: {
+                'fill-color': '#627BC1',
+                'fill-opacity': 0.1
+            }
+        });
+    
+        map.addLayer({
+            id: 'countries-outline',
+            type: 'line',
+            source: 'countries',
+            layout: {},
+            paint: {
+                'line-color': '#627BC1',
+                'line-width': 5
+            }
+        });
+    
+        // Evento para seleccionar un país y hacer zoom
+        map.on('click', 'countries-fill', (e) => {
+            const features = map.queryRenderedFeatures(e.point, { layers: ['countries-fill'] });
+            if (features.length) {
+                const feature = features[0];
+                const countryName = feature.properties.name;
+                console.log(`País seleccionado: ${countryName}`);
+    
+                // Hacer zoom al país seleccionado
+                const bounds = turf.bbox(feature);
+                map.fitBounds(bounds, { padding: 20 });
+    
+                // Resaltar el país seleccionado
+                highlightSelectedCountry(map, feature);
+    
+                // Filtrar los puntos de emisión dentro del país
+                const filteredPoints = filterPointsByCountry(feature);
+                (currentMap === 'co2') ? updateMapWithFilteredData2(map, filteredPoints) : updateMapWithFilteredData(map, filteredPoints);
+            }
+        });
+    }
+
+    // Función para resaltar el país seleccionado
+    function highlightSelectedCountry(map, feature) {
+        if (map.getLayer('selected-country')) {
+            map.removeLayer('selected-country');
+            map.removeSource('selected-country');
+        }
+
+        map.addSource('selected-country', {
+            type: 'geojson',
+            data: feature
+        });
+
+        map.addLayer({
+            id: 'selected-country',
+            type: 'fill',
+            source: 'selected-country',
+            layout: {},
+            paint: {
+                'fill-color': '#FF0000',
+                'fill-opacity': 0.3
+            }
+        });
+
+        const countryName = feature.properties.name;
+        const countryInfo = getCountryInfo(countryName);
+
+        const popup = document.getElementById('country-info-popup');
+        document.getElementById('country-name').textContent = countryName;
+        document.getElementById('country-info').textContent = countryInfo;
+        popup.style.display = 'block';
+
+        // Mostrar gráficos estadísticos para el país seleccionado
+        mostrarGraficoEstadistico(countryName);
+    }
+
+    // Filtrar los puntos por el país seleccionado
+    function filterPointsByCountry(countryFeature) {
+        const dataPoints = (currentMap === 'co2') ? co2DataPoints : methaneDataPoints;
+
+
+        return dataPoints.filter(point => {
+            const pointCoordinates = point.geometry.coordinates;
+            return turf.booleanPointInPolygon(turf.point(pointCoordinates), countryFeature);
+        });
+    }
+
+    // Actualizar el mapa con los puntos filtrados
+    function updateMapWithFilteredData(map, filteredPoints) {
+        if (map.getSource('emissions')) {
+            map.getSource('emissions').setData({
+                type: 'FeatureCollection',
+                features: filteredPoints
+            });
+        } else {
+            map.addSource('emissions', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: filteredPoints
+                }
+            });
+
+            map.addLayer({
+                id: 'emissions-heatmap',
+                type: 'heatmap',
+                source: 'emissions',
+                maxzoom: 15,
+                paint: {
+                    'heatmap-weight': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'value'],
+                        1e-12, 0,
+                        1e-10, 0.1,
+                        1e-8, 0.3,
+                        1e-6, 0.5,
+                        1e-5, 0.7,
+                        1e-4, 1
+                    ],
+                    'heatmap-intensity': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0, 1,
+                        15, 3
+                    ],
+                    'heatmap-radius': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0, 15,
+                        15, 30
+                    ],
+                    'heatmap-opacity': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0, 0.5,
+                        15, 0.8
+                    ],
+                    'heatmap-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['heatmap-density'],
+                        0, 'rgba(33,102,172,0)',
+                        0.2, 'rgb(103,169,207)',
+                        0.4, 'rgb(209,229,240)',
+                        0.6, 'rgb(253,219,199)',
+                        0.8, 'rgb(239,138,98)',
+                        1, 'rgb(178,24,43)'
+                    ]
+                }
+            });
+        }
+    }
+
+    function updateMapWithFilteredData2(map, filteredPoints) {
+
+        if (map.getSource('methane-emissions')) {
+            map.getSource('methane-emissions').setData({
+                type: 'FeatureCollection',
+                features: filteredPoints
+            });
+            console.log("Actualizado");
+        }else {
+            map.addSource('methane-emissions', {
+                type: 'geojson',
+                data: {
+                    type: 'FeatureCollection',
+                    features: filteredPoints
+                }
+            });
+
+
+            map.addLayer({
+                id: 'methane-heatmap',
+                type: 'heatmap',
+                source: 'methane-emissions',
+                maxzoom: 15,
+                paint: {
+                    // Asignar peso basado en los valores de emisión (rango ajustado a 399 - 418)
+                    'heatmap-weight': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'value'],
+                        399, 0,
+                        400, 0.05,
+                        401, 0.1,
+                        402, 0.15,
+                        403, 0.2,
+                        404, 0.25,
+                        405, 0.3,
+                        406, 0.35,
+                        407, 0.4,
+                        408, 0.45,
+                        409, 0.5,
+                        410, 0.55,
+                        411, 0.6,
+                        412, 0.65,
+                        413, 0.7,
+                        414, 0.75,
+                        415, 0.8,
+                        416, 0.85,
+                        417, 0.9,
+                        418, 1   // Valor máximo
+                    ],
+                    // Intensidad del heatmap ajustada
+                    'heatmap-intensity': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0, 1,
+                        15, 3
+                    ],
+                    // Radio de los puntos de calor aumentado para una mejor mezcla
+                    'heatmap-radius': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0, 15,
+                        15, 30
+                    ],
+                    // Opacidad del heatmap reducida para mejor integración
+                    'heatmap-opacity': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0, 0.5,
+                        15, 0.8
+                    ],
+                    // Gradiente de colores ajustado para que el color vaya de suave a fuerte
+                    'heatmap-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['heatmap-density'],
+                        0, 'rgba(240,249,255,0)',          // Azul muy claro transparente (valor 399)
+                        0.05, 'rgb(198,219,239)',         // Azul suave (valor 400)
+                        0.1, 'rgb(158,202,225)',          // Azul más oscuro (valor 401)
+                        0.15, 'rgb(107,174,214)',         // Azul intermedio (valor 402)
+                        0.2, 'rgb(66,146,198)',           // Azul fuerte (valor 403)
+                        0.25, 'rgb(33,113,181)',          // Azul aún más intenso (valor 404)
+                        0.3, 'rgb(8,81,156)',             // Azul profundo (valor 405)
+                        0.35, 'rgb(8,48,107)',            // Azul muy oscuro (valor 406)
+                        0.4, 'rgb(255,247,188)',          // Amarillo muy claro (valor 407)
+                        0.45, 'rgb(254,227,145)',         // Amarillo suave (valor 408)
+                        0.5, 'rgb(254,196,79)',           // Amarillo más fuerte (valor 409)
+                        0.55, 'rgb(254,153,41)',          // Naranja claro (valor 410)
+                        0.6, 'rgb(236,112,20)',           // Naranja fuerte (valor 411)
+                        0.65, 'rgb(204,76,2)',            // Naranja oscuro (valor 412)
+                        0.7, 'rgb(153,52,4)',             // Marrón claro (valor 413)
+                        0.75, 'rgb(102,37,6)',            // Marrón más oscuro (valor 414)
+                        0.8, 'rgb(67,0,0)',               // Rojo oscuro (valor 415)
+                        0.85, 'rgb(165,15,21)',           // Rojo muy intenso (valor 416)
+                        0.9, 'rgb(203,24,29)',            // Rojo sangre (valor 417)
+                        1, 'rgb(103,0,13)'                // Rojo muy oscuro (valor 418)
+                    ]
+                }
+            }, 'countries-outline');
+            console.log("Actualizado");
+            }            
+        }
+
+    // Cargar los países en ambos mapas
+    mapMethane.on('load', async () => {
+        await loadCountriesLayer(mapMethane); // Cargar la capa de países en el mapa de metano
+        await cargarCapasDeMetano();
+    });
+
+    mapCO2.on('load', async () => {
+        await loadCountriesLayer(mapCO2); // Cargar la capa de países en el mapa de CO2
+        await cargarCapasDeCO2();
+    });
+
+    // Evento para alternar entre los mapas cuando se haga clic en el botón
+    switchMapBtn.addEventListener('click', toggleMaps);
+
+
+    // Evento para actualizar el mapa basado en la selección de año desde el slider
+    document.getElementById('updateMapCo2Btn').addEventListener('click', async () => {
+        const selectedYear = document.getElementById('year').value; // Obtener el año desde el slider
+
+        // Construir la URL de la API para CO2 con el año seleccionado
+        let url = `http://localhost:3000/data3?year=${selectedYear}`;
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'ngrok-skip-browser-warning': 'true',
+                    'User-Agent': 'CustomUserAgent',
+                }
+            });
+            if (!response.ok) throw new Error("Error en la solicitud: " + response.status);
+
+            const data = await response.json();
+            
+            co2DataPoints = data.data.map(d => {
+                let lat = parseFloat(d.latitude);
+                let lng = parseFloat(d.longitude);
+                let value = parseFloat(d.value); 
+
+                if (lat < -90 || lat > 90) {
+                    console.warn(`Coordenadas intercambiadas para punto: original latitud ${d.latitude}, longitud ${d.longitude}`);
+                    [lat, lng] = [lng, lat];
+                }
+
+                return {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [lng, lat]
+                    },
+                    properties: {
+                        value: isNaN(value) ? null : value
+                    }
+                };
+            }).filter(d => 
+                !isNaN(d.geometry.coordinates[0]) && 
+                !isNaN(d.geometry.coordinates[1]) && 
+                d.properties.value !== null && 
+                d.properties.value > 0 &&
+                d.geometry.coordinates[1] >= -90 && d.geometry.coordinates[1] <= 90 && 
+                d.geometry.coordinates[0] >= -180 && d.geometry.coordinates[0] <= 180
+            );
+
+            updateMapWithFilteredData2(mapCO2, co2DataPoints);  // Función que actualiza el mapa de CO2 con los nuevos datos
+        } catch (error) {
+            console.error("Error al cargar los datos:", error);
+        }
+    });
+
+    // Evento para actualizar el mapa basado en la selección de categoría y clase
+    document.getElementById('updateMapBtn').addEventListener('click', async () => {
+        const selectedCategory = document.getElementById('category').value || 'prior'; // Por defecto 'post'
+        const selectedClass = document.getElementById('class').value;
+
+        // Construir la URL de la API
+        let url = `http://localhost:3000/?category=${selectedCategory}`;
+        if (selectedClass) {
+            url += `&clase=${selectedClass}`; // Añadir clase si se selecciona
+        }
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'ngrok-skip-browser-warning': 'true',
+                    'User-Agent': 'CustomUserAgent',
+                }
+            });
+
+            if (!response.ok) throw new Error("Error en la solicitud: " + response.status);
+
+            const data = await response.json();
+            updateMapWithData(data);  // Función que actualiza el mapa con los nuevos datos
+        } catch (error) {
+            console.error("Error al cargar los datos:", error);
+        }
+    });
+
+    // Función para actualizar el mapa con los datos obtenidos de la API
+    function updateMapWithData(data) {
+        methaneDataPoints = data.data.map(d => {
+            let lat = parseFloat(d.latitude);
+            let lng = parseFloat(d.longitude);
+            let value = parseFloat(d.value);
+
+            return {
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [lng, lat]
+                },
+                properties: {
+                    value: value
+                }
+            };
+        }).filter(d => 
+            !isNaN(d.geometry.coordinates[0]) && 
+            !isNaN(d.geometry.coordinates[1]) && 
+            !isNaN(d.properties.value) && 
+            d.properties.value > 0 &&
+            d.geometry.coordinates[1] >= -90 && d.geometry.coordinates[1] <= 90 && 
+            d.geometry.coordinates[0] >= -180 && d.geometry.coordinates[0] <= 180
+        );
+
+        // Actualiza la fuente de datos y recarga el mapa con todos los puntos
+        updateMapWithFilteredData(mapMethane, methaneDataPoints);
+    }
+
+    // Función para cargar capas de emisiones de metano
+    async function cargarCapasDeMetano() {
+        const response = await fetch("http://localhost:3000/?category=post", {
+            headers: {
+                'ngrok-skip-browser-warning': 'true',
+                'User-Agent': 'CustomUserAgent',
+            }
+        });
+
+        if (!response.ok) throw new Error("Error en la solicitud: " + response.status);
+        const data = await response.json();
+
+        updateMapWithData(data);
+    }
+
+    // Función para cargar capas de emisiones de CO2
+    async function cargarCapasDeCO2() {
+        const response = await fetch("http://localhost:3000/data3?year=2020", {
+            headers: {
+                'ngrok-skip-browser-warning': 'true',
+                'User-Agent': 'CustomUserAgent',
+            }
+        });
+
+        if (!response.ok) throw new Error("Error en la solicitud: " + response.status);
+        const data = await response.json();
+        console.log(data);
+        co2DataPoints = data.data.map(d => {
+            let lat = parseFloat(d.latitude);
+            let lng = parseFloat(d.longitude);
+            let value = parseFloat(d.value); 
+
+            if (lat < -90 || lat > 90) {
+                console.warn(`Coordenadas intercambiadas para punto: original latitud ${d.latitude}, longitud ${d.longitude}`);
+                [lat, lng] = [lng, lat];
+            }
+
+            return {
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [lng, lat]
+                },
+                properties: {
+                    value: isNaN(value) ? null : value
+                }
+            };
+        }).filter(d => 
+            !isNaN(d.geometry.coordinates[0]) && 
+            !isNaN(d.geometry.coordinates[1]) && 
+            d.properties.value !== null && 
+            d.properties.value > 0 &&
+            d.geometry.coordinates[1] >= -90 && d.geometry.coordinates[1] <= 90 && 
+            d.geometry.coordinates[0] >= -180 && d.geometry.coordinates[0] <= 180
+        );
+
+        updateMapWithFilteredData2(mapCO2, co2DataPoints);
+        
+    }
+
+    // Función para deseleccionar el país al presionar "Escape"
+    function deselectCountry(map) {
+        if (map) {
+            map.removeLayer('selected-country');
+            map.removeSource('selected-country');
+            (currentMap === 'co2') ? updateMapWithFilteredData2(map, co2DataPoints) : updateMapWithFilteredData(map, methaneDataPoints);
+            selectedCountry = null;  // Restablecer la selección
+            const popup = document.getElementById('country-info-popup');
+            popup.style.display = 'none';
+        }
+    }
+
+    // Agregar el evento keydown para deseleccionar país cuando se presiona "Escape"
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            deselectCountry(currentMap === 'methane' ? mapMethane : mapCO2);
+        }
+    });
+
+    const countryData = {
+        "countries": [
+          {
+            "country": "United States of America",
+            "info": "The second largest emitter of CO₂, with around 5.4 billion tons in 2021. Policies have begun to shift towards reducing emissions in the energy and agricultural sectors. Methane emissions have increased, especially in the oil and gas sector, leading to new regulations aimed at reducing these leaks."
+            },
+            {
+                "country": "Peru",
+                "info": "In Peru, CO₂ emissions are primarily related to deforestation and agriculture. In 2020, the country emitted approximately 130 million tons of CO₂. Methane production is also significant, especially in agriculture and waste management, although policies are being implemented to reduce these emissions as part of its climate commitments."
+            },
+            {
+                "country": "China",
+                "info": "The largest emitter of methane, accounting for 16% of global emissions, driven by agriculture and fossil fuel production. Despite some policies aimed at reducing emissions, growth remains a challenge due to reliance on coal energy and intensive livestock farming."
+            },
+            {
+                "country": "India",
+                "info": "With 9% of methane emissions, India faces significant challenges in waste management and agriculture, where livestock is a major source of methane. The country has adopted some policies to address these issues, but population growth and urbanization complicate solutions."
+            },
+            {
+                "country": "Brazil",
+                "info": "Representing 6% of global methane emissions, Brazil faces challenges related to deforestation and agriculture, particularly in beef production. Deforestation of the Amazon also contributes to CO₂ emissions."
+            },
+            {
+                "country": "Russia",
+                "info": "With 5% of methane emissions, Russia has large natural gas reserves, and methane leaks from gas infrastructure are a concern. Environmental policies are under development, but the country still heavily relies on fossil fuels."
+            },
+            {
+                "country": "Germany",
+                "info": "Germany has implemented aggressive policies to reduce CO₂ and methane emissions, focusing on an energy transition toward renewable sources. However, it still faces challenges with fossil fuel use, particularly in the industry."
+            },
+            {
+                "country": "France",
+                "info": "The country has made significant efforts to reduce greenhouse gas emissions, including sustainable agricultural policies and promoting renewable energy. However, methane remains a problem, especially in the agricultural sector."
+            },
+            {
+                "country": "United Kingdom",
+                "info": "The UK has achieved notable reductions in CO₂ emissions, but methane emissions, particularly from livestock, remain a concern. The country has launched initiatives to reduce these emissions in the coming years."
+            },
+            {
+                "country": "Australia",
+                "info": "Despite efforts to reduce emissions, Australia continues to face increases in methane emissions, especially from coal mining and agriculture. The country is taking steps to address these emissions, but much work remains."
+            },
+            {
+                "country": "Canada",
+                "info": "Canada has set ambitious targets to reduce methane emissions, particularly in the oil and gas sector. The country has adopted stricter regulations, but compliance and implementation remain significant challenges."
+            },
+            {
+                "country": "Japan",
+                "info": "Japan has seen increases in methane emissions, mainly due to waste management and agriculture. The country is working on policies to reduce these emissions but still heavily relies on fossil fuels."
+            }
+        ]
+    };
+  
+      function getCountryInfo(countryName) {
+          const country = countryData.countries.find(c => c.country === countryName);
+          return country ? country.info : 'No hay información disponible.';
+      }
+
+
+
+
+
+
+
+let co2ChartInstance = null;
+let methaneChartInstance = null;
+      
+
+  // Función para mostrar los gráficos cuando se selecciona un país
+async function mostrarGraficoEstadistico(countryName) {
+    const co2ChartCanvas = document.getElementById('co2Chart').getContext('2d');
+    const methaneChartCanvas = document.getElementById('methaneChart').getContext('2d');
+
+    // Obtener datos de CO2 para el país
+    const co2Data = await obtenerDatosCo2(countryName);
+    
+    // Destruir la instancia anterior del gráfico de CO2 si existe
+    if (co2ChartInstance) {
+        co2ChartInstance.destroy();
+    }
+
+    // Crear nuevo gráfico de CO2
+    co2ChartInstance = new Chart(co2ChartCanvas, {
+        type: 'line',
+        data: {
+            labels: [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022], // Ajusta estos años según sea necesario
+            datasets: [{
+                label: `Emisiones de CO₂ en ${countryName}`,
+                data: co2Data,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,  // No comenzamos en cero
+                    min: 390,  // Establecemos el mínimo a 390
+                    max: 425,  // Establecemos el máximo a 425
+                    ticks: {
+                        stepSize: 1 // Paso de 1 unidad entre las marcas del eje
+                    }
+                }
+            }
+        }
+    });
+
+    // Obtener datos de Metano para el país
+    const methaneData = await obtenerDatosMetano(countryName);
+
+    // Destruir la instancia anterior del gráfico de Metano si existe
+    if (methaneChartInstance) {
+        methaneChartInstance.destroy();
+    }
+
+    // Crear nuevo gráfico de Metano con dos datasets: Prior y Post
+    methaneChartInstance = new Chart(methaneChartCanvas, {
+        type: 'bar',
+        data: {
+            labels: ['Coal', 'Fire', 'Gas', 'Geo', 'Livestock', 'Oil', 'Rice'], // Clases de Metano
+            datasets: [
+                {
+                    label: 'Prior',
+                    data: methaneData.prior,  // Datos de Prior por clase
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',  // Azul claro
+                    borderColor: 'rgba(54, 162, 235, 1)',        // Azul oscuro
+                    borderWidth: 1
+                },
+                {
+                    label: 'Post',
+                    data: methaneData.post,   // Datos de Post por clase
+                    backgroundColor: 'rgba(255, 206, 86, 0.2)',  // Amarillo claro
+                    borderColor: 'rgba(255, 206, 86, 1)',        // Amarillo oscuro
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                },
+                x: {
+                    stacked: false  // Si deseas barras agrupadas, mantener en false
+                }
+            },
+            plugins: {
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                },
+                legend: {
+                    position: 'top'
+                }
+            }
+        }
+    });
+}
+
+
+
+// Obtener datos de CO₂ desde 2015 hasta 2022 para un país específico
+async function obtenerDatosCo2(countryName) {
+    const co2Values = [];
+    for (let year = 2015; year <= 2022; year++) {
+        const response = await fetch(`http://localhost:3000/data3?year=${year}`);
+        const data = await response.json();
+        const countryData = data.data.find(c => c.country === countryName);
+        co2Values.push(countryData ? countryData.value : 0);  // Asumimos que 'value' es la emisión de CO₂
+    }
+    return co2Values;
+}
+
+// Obtener datos de metano según las coordenadas del país
+async function obtenerDatosMetano(countryName) {
+    const clases = ['coal', 'fire', 'gas', 'geo', 'livestock', 'oil', 'rice'];
+    const categorias = ['prior', 'post'];
+    const emissions = {
+        prior: [],
+        post: []
+    };
+
+    // Para cada categoría y clase, sumar las emisiones dentro del país
+    for (const categoria of categorias) {
+        for (const clase of clases) {
+            const response = await fetch(`http://localhost:3000?category=${categoria}&clase=${clase}`);
+            const data = await response.json();
+            // Filtrar puntos dentro del país
+            const filteredData = data.data.filter(d => puntoEstaDentroDePais({
+                latitude: parseFloat(d.latitude),
+                longitude: parseFloat(d.longitude)
+            }, countryName));
+
+            // Sumar las emisiones dentro del país para la clase y categoría actual
+            const claseEmissions = filteredData.reduce((acc, curr) => acc + parseFloat(curr.value), 0);
+            emissions[categoria].push(claseEmissions);
+        }
+    }
+
+    return emissions;  // Devuelve un objeto con emisiones separadas por categoría
+}
+
+
+function puntoEstaDentroDePais(punto, countryName) {
+    const countryFeature = filteredCountries.find(c => c.properties.name === countryName);
+    
+    if (countryFeature) {
+        const point = turf.point([punto.longitude, punto.latitude]);
+        const isInside = turf.booleanPointInPolygon(point, countryFeature);
+        return isInside;
+    }
+
+    return false;
+}
+
+
+
+
+
+
+
+</script>
+
+</body>
+</html>
