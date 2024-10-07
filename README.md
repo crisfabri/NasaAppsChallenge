@@ -2,6 +2,10 @@
 
 This project allows users to visualize data related to methane and CO₂ emissions on an interactive map using **Mapbox** and **Chart.js**. A graphical interface is provided to explore emissions from various countries and retrieve detailed information.
 
+<div align="center">
+  <img src="imgs/video.gif" alt="Video" />
+</div>
+
 ## Table of Contents
 
 - **Interactive Map**: The `mapa.html` file enables visualization of methane and CO₂ emissions, allowing users to toggle between the two maps.
@@ -57,7 +61,7 @@ The interactive map allows the selection of CO₂ emission data for the range of
 
 Below are some screenshots of the data visualization:
 
-![Video](imgs/video.gif)
+
 
 ![Demo 1](imgs/img1.jpeg)
 ![Demo 2](imgs/img2.jpeg)
