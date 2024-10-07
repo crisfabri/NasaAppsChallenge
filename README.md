@@ -57,6 +57,8 @@ The interactive map allows the selection of CO₂ emission data for the range of
 
 Below are some screenshots of the data visualization:
 
+![Video](imgs/video.mp4)
+
 ![Demo 1](imgs/img1.jpeg)
 ![Demo 2](imgs/img2.jpeg)
 ![Demo 3](imgs/img3.jpeg)
